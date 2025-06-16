@@ -9,6 +9,7 @@
     "typescript": "^5.7.3"
   },
   "dependencies": {
+    "channel": "v57/channel",
     "google-auth-library": "^9.15.1",
     "hub-service": "v57/hub-service"
   }

@@ -6,6 +6,7 @@
       "dependencies": {
         "google-auth-library": "^9.15.1",
         "hub-service": "v57/hub-service",
+        "channel": "v57/channel",
       },
       "devDependencies": {
         "@types/bun": "latest",
@@ -77,5 +78,7 @@
     "webidl-conversions": ["webidl-conversions@3.0.1", "", {}, "sha512-2JAn3z8AR6rjK8Sm8orRC0h/bcl/DqL7tRPdGZ4I1CjdF+EaMLmYxBHyXuKL849eucPFhvBoxMsflfOb8kxaeQ=="],
 
     "whatwg-url": ["whatwg-url@5.0.0", "", { "dependencies": { "tr46": "~0.0.3", "webidl-conversions": "^3.0.0" } }, "sha512-saE57nupxk6v3HY35+jzBwYa0rKSy0XR8JSxZPwgLr7ys0IBzhGviA1/TUGJLmSVqs8pb9AnvICXEuOHLprYTw=="],
+
+    "hub-service/channel": ["channel@github:v57/channel#a4ba2af", { "peerDependencies": { "typescript": "^5.0.0" } }, "v57-channel-a4ba2af"],
   }
 }

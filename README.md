@@ -141,3 +141,94 @@ interface GoogleUser {
   locale?: string
 }
 ```
+
+## Service reference
+
+### What it does
+
+hub-google verifies Google Sign-In ID tokens for your servers and services, with Google's `google-auth-library`: the
+signature against Google's keys, the issuer, the expiry and, when the call names it, the audience (your app's client
+id). It answers the token's claims (`google/login`) or only the user's stable id (`google/login/lite`). It holds no
+secrets and keeps no state: the client id comes with each call. Its only outgoing requests go to Google for the
+signing keys.
+
+### Installing it on a Hub
+
+**From the launcher.** The launcher's app catalogue ([hub-store](https://github.com/v57/hub-store) `apps.json`) lists
+it as **Login with Google** (`v57/google`, repository `v57/hub-google`). An owner installs it in the Hub app:
+**Launcher**, **Get More**, then **Get** (see the Hub app guide's
+[Launcher](https://github.com/v57/hub-app/blob/main/docs/Launcher.md) page). The launcher on the hub's machine clones
+the repository into its `apps/` folder (`~/Hub/Launcher/apps/hub-google` when it was started with the
+[`hub`](https://github.com/v57/hub) CLI), runs `bun install --production --frozen-lockfile` and starts it with `bun .`.
+**Instances** in the app's details runs more copies.
+
+**By hand**, on any machine that reaches the hub:
+
+```sh
+git clone https://github.com/v57/hub-google.git && cd hub-google
+bun install
+HUB=ws://127.0.0.1:1997 bun .
+```
+
+Configuration:
+
+| Name | Kind | What |
+| --- | --- | --- |
+| `HUB` | environment | The hub's address. A bare number is a port on this machine. Default `1997`. |
+| `auth` | file in the working directory | The service's own key, created on the first run. Keep it: the hub approves the service by this key. |
+
+No Google client secret is needed. The client id is not configured on the service: each call names it in
+`audience`. The hub-service SDK reads a few more variables (device key, instance name); see the
+[hub-service README](https://github.com/v57/hub-service).
+
+**Hosting approval.** When the service connects, it asks the hub to post its two paths. The hub routes no calls to it
+until an owner allows that: the Hub app lists the paths as **Needs approval** on **Services** and the request on
+**Requests**, where **Allow** approves exactly those paths for the service's key. The owner call behind it is
+`hub/host/update { key, allow: [paths] }`. A service whose key is an owner's needs no approval.
+
+### APIs
+
+The descriptions come from `descriptions.ts`, which the service sends to the hub; `hub/api/list` returns them (the Hub
+protocol, `Docs/Devices/protocol.md` section 15 in the Hub workspace).
+
+| Path | Kind | Title | Takes | Returns |
+| --- | --- | --- | --- | --- |
+| `google/login` | post | Verify Google Sign-In | `{ idToken, audience?, maxExpiry? }` | the token's claims: `sub`, `aud`, `iss`, `iat`, `exp`, and `email`, `email_verified`, `name`, `picture`, `hd` when present ([`GoogleUser`](#types)) |
+| `google/login/lite` | post | Google Sign-In user id | `{ idToken, audience?, maxExpiry? }` | `sub`, the user's stable Google id, as a string |
+
+- The body is `google-auth-library`'s `VerifyIdTokenOptions`. `idToken` is the ID token (a JWT) Google Sign-In gave
+  the app. `audience` is your client id, or a list of them. `maxExpiry` is the longest token lifetime accepted, in
+  seconds.
+- **Always send `audience`.** Without it, a valid token issued for any app passes.
+- Both fail when the signature, audience, issuer or expiry don't check out.
+
+### Permissions
+
+The service doesn't guard its paths (it has no `access.ts`) and doesn't mark them `public`, so the hub decides:
+
+| Caller | On a `default-deny` hub (every new hub) | On an older `default-allow` hub |
+| --- | --- | --- |
+| An owner of the hub | allowed | allowed |
+| A caller an owner granted the path (or a prefix of it) | allowed | allowed |
+| Anyone else | refused | allowed, unless a permission group names the path |
+
+Most setups call these paths from a backend server, which then signs the user in. An owner lets that server call
+them with a grant (Hub protocol section 6):
+
+```
+hub/grant/add { "subject": { "key": "<the server's public key>" }, "object": { "prefix": "google/login" } }
+```
+
+`subject` may also be `{ "device": "<device id>" }`, `{ "group": "<group>" }` or `{ "everyone": true }`; `object` may
+be `{ "path": "google/login/lite" }` for one path. In the Hub app, the same is **Grant** on a device's **Access** list.
+
+### Testing
+
+```sh
+bun install
+bun test
+```
+
+`descriptions.test.ts` checks that every registered path and kind is described, and that the schemas stay in the
+subset hub-service accepts (hub-service `docs/api-descriptions.md`). There is no test of the verification itself; it
+is `google-auth-library`'s `OAuth2Client.verifyIdToken`.

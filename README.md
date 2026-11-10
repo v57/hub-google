@@ -206,23 +206,14 @@ protocol, `Docs/Devices/protocol.md` section 15 in the Hub workspace).
 
 ### Permissions
 
-The service doesn't guard its paths (it has no `access.ts`) and doesn't mark them `public`, so the hub decides:
+Both paths are marked `public` (`access.ts`): anyone may call them, also anonymous callers on `default-deny` hubs. Each
+verifies an ID token the caller presents against Google's public keys and answers what the token already says; the
+service holds no secret and changes no state, so a grant would protect nothing. hub-service's per-caller rate limit
+applies.
 
-| Caller | On a `default-deny` hub (every new hub) | On an older `default-allow` hub |
-| --- | --- | --- |
-| An owner of the hub | allowed | allowed |
-| A caller an owner granted the path (or a prefix of it) | allowed | allowed |
-| Anyone else | refused | allowed, unless a permission group names the path |
-
-Most setups call these paths from a backend server, which then signs the user in. An owner lets that server call
-them with a grant (Hub protocol section 6):
-
-```
-hub/grant/add { "subject": { "key": "<the server's public key>" }, "object": { "prefix": "google/login" } }
-```
-
-`subject` may also be `{ "device": "<device id>" }`, `{ "group": "<group>" }` or `{ "everyone": true }`; `object` may
-be `{ "path": "google/login/lite" }` for one path. In the Hub app, the same is **Grant** on a device's **Access** list.
+Being allowed to ask is not trust: your backend trusts a login because the audience is its own client id
+(`GOOGLE_CLIENT_IDS` or the `audience` it passed). Call these paths from your backend, never trust a client that says
+it called them.
 
 ### Testing
 

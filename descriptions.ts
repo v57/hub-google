@@ -18,14 +18,14 @@ const verifyOptions = {
   properties: {
     idToken: { type: 'string', description: 'The ID token (a JWT) Google Sign-In gave the app' },
     audience: {
-      description: 'Client ID or IDs of the app; the token\'s aud must be one of them. Without it a token for any app passes, so always send it',
+      description: 'Client ID or IDs of the app; the token\'s aud must be one of them. Required unless the service is configured with GOOGLE_CLIENT_IDS, and then it must be among those',
       anyOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }],
     },
     maxExpiry: { type: 'integer', description: 'Longest token lifetime accepted, in seconds' },
   },
   required: ['idToken'],
 }
-const failures = 'Fails when the signature, audience, issuer or expiry don\'t check out.'
+const failures = 'Fails with "audience required" (no audience sent and none configured), "audience not configured", or when the signature, audience, issuer or expiry don\'t check out.'
 
 export const descriptions: Descriptions = {
   post: {

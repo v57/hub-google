@@ -147,9 +147,9 @@ interface GoogleUser {
 ### What it does
 
 hub-google verifies Google Sign-In ID tokens for your servers and services, with Google's `google-auth-library`: the
-signature against Google's keys, the issuer, the expiry and, when the call names it, the audience (your app's client
-id). It answers the token's claims (`google/login`) or only the user's stable id (`google/login/lite`). It holds no
-secrets and keeps no state: the client id comes with each call. Its only outgoing requests go to Google for the
+signature against Google's keys, the issuer, the expiry and the audience (your app's client ids, configured on the
+service or named by each call; a call with neither is refused). It answers the token's claims (`google/login`) or
+only the user's stable id (`google/login/lite`). It holds no secrets and keeps no state. Its only outgoing requests go to Google for the
 signing keys.
 
 ### Installing it on a Hub
@@ -175,10 +175,10 @@ Configuration:
 | Name | Kind | What |
 | --- | --- | --- |
 | `HUB` | environment | The hub's address. A bare number is a port on this machine. Default `1997`. |
+| `GOOGLE_CLIENT_IDS` | environment | Your apps' OAuth client ids, separated by commas. When set, tokens must be issued for one of them, and a call's `audience` may only narrow the list. |
 | `auth` | file in the working directory | The service's own key, created on the first run. Keep it: the hub approves the service by this key. |
 
-No Google client secret is needed. The client id is not configured on the service: each call names it in
-`audience`. The hub-service SDK reads a few more variables (device key, instance name); see the
+No Google client secret is needed. Without `GOOGLE_CLIENT_IDS`, each call must name its client id in `audience`. The hub-service SDK reads a few more variables (device key, instance name); see the
 [hub-service README](https://github.com/v57/hub-service).
 
 **Hosting approval.** When the service connects, it asks the hub to post its two paths. The hub routes no calls to it
@@ -199,7 +199,9 @@ protocol, `Docs/Devices/protocol.md` section 15 in the Hub workspace).
 - The body is `google-auth-library`'s `VerifyIdTokenOptions`. `idToken` is the ID token (a JWT) Google Sign-In gave
   the app. `audience` is your client id, or a list of them. `maxExpiry` is the longest token lifetime accepted, in
   seconds.
-- **Always send `audience`.** Without it, a valid token issued for any app passes.
+- `audience` is required unless the service has `GOOGLE_CLIENT_IDS`: a call without one fails with `audience required`,
+  since `google-auth-library` would accept a token issued for any app. With `GOOGLE_CLIENT_IDS`, an `audience` outside
+  it fails with `audience not configured`.
 - Both fail when the signature, audience, issuer or expiry don't check out.
 
 ### Permissions
@@ -229,6 +231,7 @@ bun install
 bun test
 ```
 
-`descriptions.test.ts` checks that every registered path and kind is described, and that the schemas stay in the
-subset hub-service accepts (hub-service `docs/api-descriptions.md`). There is no test of the verification itself; it
-is `google-auth-library`'s `OAuth2Client.verifyIdToken`.
+- `login.test.ts` signs tokens locally and gives `OAuth2Client` its own keys (no request leaves the machine): a call
+  without an audience is refused, a token for another client id fails, and `GOOGLE_CLIENT_IDS` limits the audience.
+- `descriptions.test.ts` checks that every registered path and kind is described, and that the schemas stay in the
+  subset hub-service accepts (hub-service `docs/api-descriptions.md`).

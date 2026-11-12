@@ -1,6 +1,8 @@
 node_modules/
 .DS_Store
 auth
+# The service key and the Hub keys it pinned, when it runs from this folder
+hubs.json
 .env
 CLAUDE.md
 /.claude
